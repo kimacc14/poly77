@@ -485,4 +485,8 @@ if __name__ == "__main__":
     logger.info("=" * 60)
     logger.info("🚀 PRODUCTION MODE - REAL DATA ONLY")
     logger.info("=" * 60)
-    uvicorn.run(app, host="0.0.0.0", port=8002)
+
+    # Support PORT environment variable for cloud platforms (Render, Railway, etc.)
+    port = int(os.getenv("PORT", 8002))
+    logger.info(f"🌐 Starting server on port: {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
