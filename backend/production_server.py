@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="AI-Powered Mindshare Market Analyzer (PRODUCTION)",
-    description="Real data from Reddit + Polymarket + Kalshi + AI sentiment analysis",
+    title="Prediq API",
+    description="AI-powered prediction market intelligence with real-time sentiment analysis",
     version="1.0.0"
 )
 
@@ -198,7 +198,7 @@ def calculate_sentiment_metrics(posts: List[Dict]) -> Dict:
 async def api_info():
     """API info endpoint."""
     return {
-        "message": "AI-Powered Mindshare Market Analyzer API (PRODUCTION)",
+        "message": "Prediq API",
         "version": "1.0.0",
         "status": "operational",
         "mode": "REAL_DATA",
@@ -218,7 +218,7 @@ async def root():
         return FileResponse(frontend_path)
     else:
         return {
-            "message": "AI-Powered Mindshare Market Analyzer API (PRODUCTION)",
+            "message": "Prediq API",
             "version": "1.0.0",
             "status": "operational",
             "note": "Frontend not found. API is working at /api/markets"
