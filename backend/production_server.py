@@ -7,6 +7,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from typing import Optional, List, Dict
 from datetime import datetime
 import logging
@@ -192,9 +194,9 @@ def calculate_sentiment_metrics(posts: List[Dict]) -> Dict:
     }
 
 
-@app.get("/")
-async def root():
-    """Root endpoint."""
+@app.get("/api")
+async def api_info():
+    """API info endpoint."""
     return {
         "message": "AI-Powered Mindshare Market Analyzer API (PRODUCTION)",
         "version": "1.0.0",
@@ -206,6 +208,21 @@ async def root():
             "ai": "Hugging Face Transformers"
         }
     }
+
+
+@app.get("/")
+async def root():
+    """Serve frontend."""
+    frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html")
+    if os.path.exists(frontend_path):
+        return FileResponse(frontend_path)
+    else:
+        return {
+            "message": "AI-Powered Mindshare Market Analyzer API (PRODUCTION)",
+            "version": "1.0.0",
+            "status": "operational",
+            "note": "Frontend not found. API is working at /api/markets"
+        }
 
 
 @app.get("/api/markets")
@@ -454,6 +471,13 @@ async def health_check():
             "sentiment_analyzer": sentiment_analyzer is not None
         }
     }
+
+
+# Mount static files for frontend assets
+frontend_assets_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "assets")
+if os.path.exists(frontend_assets_path):
+    app.mount("/assets", StaticFiles(directory=frontend_assets_path), name="assets")
+    logger.info(f"✅ Mounted frontend assets from: {frontend_assets_path}")
 
 
 if __name__ == "__main__":
