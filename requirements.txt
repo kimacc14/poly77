@@ -1,4 +1,4 @@
-# Ultra-minimal - NO AI model (for testing deployment)
+# Full deployment with AI sentiment analysis
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 pydantic==2.5.3
@@ -7,6 +7,7 @@ requests==2.31.0
 praw==7.7.1
 numpy==1.26.0
 
-# Remove AI temporarily to get deployment working
-# transformers==4.40.0
-# torch==2.2.0
+# AI/ML - Python 3.12 compatible versions
+transformers==4.40.0
+torch==2.2.0
+sentencepiece==0.2.0
