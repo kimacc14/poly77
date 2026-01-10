@@ -130,8 +130,8 @@ class KalshiClient:
 
                     # Filter: Only include markets with volume >= $10,000
                     # Note: Kalshi volumes are MUCH lower than Polymarket
-                    # Highest observed: ~$660, so use $100 threshold for now
-                    if volume_dollars < 100:  # $100 minimum volume
+                    # Highest observed: ~$660, so use $10 threshold
+                    if volume_dollars < 10:  # $10 minimum volume
                         continue
 
                     # Format close time
