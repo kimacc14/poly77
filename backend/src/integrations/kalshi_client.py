@@ -128,10 +128,9 @@ class KalshiClient:
                     volume_cents = market.get("volume", 0) or 0
                     volume_dollars = volume_cents / 100.0
 
-                    # Filter: Kalshi has much lower volumes than Polymarket
-                    # Use $10 minimum for Kalshi (vs $1,000 for Polymarket)
-                    if volume_dollars < 10:
-                        continue
+                    # No volume filter for Kalshi - volumes are too low
+                    # Polymarket uses $1,000 minimum, but Kalshi markets
+                    # have much lower trading activity
 
                     # Format close time
                     try:
