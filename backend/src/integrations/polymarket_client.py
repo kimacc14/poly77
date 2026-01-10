@@ -122,6 +122,11 @@ class PolymarketClient:
                 description = event.get('description', '')
                 category = self._categorize_market(title, description)
 
+                # Filter: Only include markets with volume >= $1,000
+                volume = float(event.get('volume', 0))
+                if volume < 1000:
+                    continue
+
                 processed_markets.append({
                     'platform': 'polymarket',
                     'market_id': str(event.get('id', '')),
@@ -129,7 +134,7 @@ class PolymarketClient:
                     'description': description,
                     'category': category,
                     'current_probability': probability,
-                    'volume': float(event.get('volume', 0)),
+                    'volume': volume,
                     'close_time': self._parse_datetime(event.get('endDate')),
                     'metadata': {
                         'outcomes': json.loads(first_market.get('outcomes', '[]')) if isinstance(first_market.get('outcomes'), str) else first_market.get('outcomes', []),
