@@ -49,9 +49,9 @@ polymarket_client = None
 kalshi_client = None
 sentiment_analyzer = None
 
-# Simple in-memory cache
+# Simple in-memory cache - Extended TTL to reduce costs
 markets_cache = {"polymarket": [], "kalshi": [], "timestamp": None}
-CACHE_TTL = 300  # 5 minutes
+CACHE_TTL = 7200  # 2 hours - Reduces API calls 96% (was 5 min)
 
 
 @app.on_event("startup")
@@ -262,6 +262,13 @@ async def get_markets(
 async def fetch_fresh_markets():
     """Fetch fresh markets from both Polymarket and Kalshi."""
     global markets_cache
+    import gc
+
+    # Clear old cache to free memory before fetching new data
+    if markets_cache["polymarket"] or markets_cache["kalshi"]:
+        markets_cache["polymarket"] = []
+        markets_cache["kalshi"] = []
+        gc.collect()  # Force garbage collection
 
     polymarket_markets = []
     kalshi_markets = []
