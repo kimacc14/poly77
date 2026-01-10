@@ -49,9 +49,9 @@ polymarket_client = None
 kalshi_client = None
 sentiment_analyzer = None
 
-# Simple in-memory cache - Extended TTL to reduce costs
+# Simple in-memory cache - Balanced TTL for cost vs freshness
 markets_cache = {"polymarket": [], "kalshi": [], "timestamp": None}
-CACHE_TTL = 7200  # 2 hours - Reduces API calls 96% (was 5 min)
+CACHE_TTL = 3600  # 1 hour - Balance between freshness and cost
 
 
 @app.on_event("startup")
@@ -317,12 +317,12 @@ async def get_market_details(market_id: str):
 
         logger.info(f"🔍 Analyzing sentiment for: {keywords}")
 
-        # Fetch Reddit posts
+        # Fetch Reddit posts - Reduced limit to save memory
         reddit_posts = reddit_client.search_posts(
             query=keywords,
             subreddit="all",
             time_filter="day",
-            limit=30
+            limit=10  # Reduced from 30 to save memory
         )
 
         if reddit_posts:
@@ -350,6 +350,11 @@ async def get_market_details(market_id: str):
             reasoning = f"Sentiment: {sentiment_score:+.2f} ({int(positive_ratio*100)}% positive from {mention_count} posts). Market at {current_prob*100:.1f}%, sentiment suggests {sentiment_prob*100:.1f}%"
 
             logger.info(f"✅ AI Analysis: shift={predicted_shift:+.2f}%, confidence={confidence}, posts={mention_count}")
+
+            # Free memory after analysis
+            import gc
+            del reddit_posts, metrics
+            gc.collect()
         else:
             # No Reddit data - use neutral prediction
             predicted_shift = 0.0
@@ -387,12 +392,12 @@ async def analyze_topic(topic: str, hours_back: int = 24):
     try:
         logger.info(f"🔍 Analyzing REAL data for topic: {topic}")
 
-        # Fetch REAL Reddit data
+        # Fetch REAL Reddit data - Reduced limit to save memory
         reddit_posts = reddit_client.search_posts(
             query=topic,
             subreddit="all",
             time_filter="day",
-            limit=50
+            limit=10  # Reduced from 50 to save memory
         )
 
         if not reddit_posts:
@@ -420,11 +425,18 @@ async def analyze_topic(topic: str, hours_back: int = 24):
                     "similarity": 0.75  # Simplified
                 })
 
+        posts_count = len(reddit_posts)
+
+        # Free memory after analysis
+        import gc
+        del reddit_posts
+        gc.collect()
+
         return {
             "topic": topic,
             "sentiment": sentiment_metrics,
             "matched_markets": matched_markets[:5],
-            "posts_analyzed": len(reddit_posts),
+            "posts_analyzed": posts_count,
             "mode": "REAL_DATA",
             "sources": ["Reddit Public API", "Hugging Face AI"]
         }
