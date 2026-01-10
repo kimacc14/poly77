@@ -129,8 +129,8 @@ class KalshiClient:
                     volume_dollars = volume_cents / 100.0
 
                     # Filter: Kalshi has much lower volumes than Polymarket
-                    # Use $100 minimum for Kalshi (vs $1,000 for Polymarket)
-                    if volume_dollars < 100:
+                    # Use $10 minimum for Kalshi (vs $1,000 for Polymarket)
+                    if volume_dollars < 10:
                         continue
 
                     # Format close time
