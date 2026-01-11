@@ -1,4 +1,4 @@
-# Minimal requirements for Railway deployment (AI disabled for cost optimization)
+# Minimal requirements for Railway deployment with optimized AI
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 pydantic==2.5.3
@@ -6,8 +6,7 @@ python-dotenv==1.0.0
 requests==2.31.0
 praw==7.7.1
 
-# AI/ML packages removed to reduce memory usage and deployment size
-# transformers==4.40.0
-# torch==2.2.0
-# sentencepiece==0.2.0
-# numpy==1.26.0
+# AI/ML - Minimal versions for sentiment analysis
+transformers==4.40.0
+torch==2.2.0
+sentencepiece==0.2.0
