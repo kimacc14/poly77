@@ -13,7 +13,6 @@ from typing import Optional, List, Dict
 from datetime import datetime
 import logging
 from pydantic import BaseModel
-import numpy as np
 
 # Real integrations
 from integrations.reddit_public import RedditPublicClient
@@ -49,9 +48,10 @@ polymarket_client = None
 kalshi_client = None
 sentiment_analyzer = None
 
-# Simple in-memory cache - Balanced TTL for cost vs freshness
+# Simple in-memory cache - Aggressive cleanup to minimize memory
 markets_cache = {"polymarket": [], "kalshi": [], "timestamp": None}
-CACHE_TTL = 3600  # 1 hour - Balance between freshness and cost
+CACHE_TTL = 1800  # 30 minutes - Aggressive cleanup to reduce memory
+MAX_CACHE_SIZE = 150  # Maximum total markets to cache
 
 
 @app.on_event("startup")
@@ -82,19 +82,10 @@ async def startup_event():
     except Exception as e:
         logger.error(f"❌ Kalshi client failed: {e}")
 
-    # Initialize sentiment analyzer
-    try:
-        from transformers import pipeline
-        logger.info("Loading sentiment model (this may take a moment)...")
-        sentiment_analyzer = pipeline(
-            "sentiment-analysis",
-            model="distilbert-base-uncased-finetuned-sst-2-english",
-            device=-1  # CPU
-        )
-        logger.info("✅ AI sentiment analyzer loaded")
-    except Exception as e:
-        logger.error(f"❌ Sentiment analyzer failed: {e}")
-        sentiment_analyzer = None
+    # Sentiment analyzer disabled to reduce memory usage
+    # Will be loaded on-demand if needed (currently disabled for cost optimization)
+    sentiment_analyzer = None
+    logger.info("ℹ️  AI sentiment analyzer disabled (memory optimization)")
 
 
 def analyze_sentiment_batch(texts: List[str]) -> List[Dict]:
@@ -291,17 +282,34 @@ async def fetch_fresh_markets():
         except Exception as e:
             logger.error(f"Error fetching Kalshi markets: {e}")
 
+    # Limit cache size to prevent memory overflow
+    total_markets = len(polymarket_markets) + len(kalshi_markets)
+    if total_markets > MAX_CACHE_SIZE:
+        # Keep markets with highest volume
+        all_markets = polymarket_markets + kalshi_markets
+        all_markets.sort(key=lambda x: x.get('volume', 0), reverse=True)
+        all_markets = all_markets[:MAX_CACHE_SIZE]
+
+        # Split back
+        polymarket_markets = [m for m in all_markets if m.get('platform') == 'polymarket']
+        kalshi_markets = [m for m in all_markets if m.get('platform') == 'kalshi']
+        logger.info(f"⚠️  Cache limited to {MAX_CACHE_SIZE} markets (was {total_markets})")
+
     # Update cache
     markets_cache["polymarket"] = polymarket_markets
     markets_cache["kalshi"] = kalshi_markets
     markets_cache["timestamp"] = datetime.utcnow()
+
+    # Force garbage collection after cache update
+    import gc
+    gc.collect()
 
     return polymarket_markets + kalshi_markets
 
 
 @app.get("/api/markets/{market_id}")
 async def get_market_details(market_id: str):
-    """Get market details with AI analysis."""
+    """Get market details (AI analysis disabled for cost optimization)."""
     # Search in both Polymarket and Kalshi caches
     all_markets = markets_cache.get("polymarket", []) + markets_cache.get("kalshi", [])
     market = next((m for m in all_markets if m.get("market_id") == market_id), None)
@@ -309,70 +317,12 @@ async def get_market_details(market_id: str):
     if not market:
         raise HTTPException(status_code=404, detail="Market not found")
 
-    # REAL AI-powered prediction
-    try:
-        # Extract keywords from market title
-        title = market.get('title', '')
-        keywords = ' '.join(title.split()[:3])  # Use first 3 words as search term
-
-        logger.info(f"🔍 Analyzing sentiment for: {keywords}")
-
-        # Fetch Reddit posts - Reduced limit to save memory
-        reddit_posts = reddit_client.search_posts(
-            query=keywords,
-            subreddit="all",
-            time_filter="day",
-            limit=10  # Reduced from 30 to save memory
-        )
-
-        if reddit_posts:
-            # Calculate REAL sentiment metrics
-            metrics = calculate_sentiment_metrics(reddit_posts)
-            sentiment_score = metrics.get('sentiment_score', 0.0)
-            positive_ratio = metrics.get('positive_ratio', 0.5)
-            mention_count = metrics.get('mention_count', 0)
-
-            # Calculate prediction shift based on sentiment
-            current_prob = market.get('current_probability', 0.5)
-            sentiment_prob = (sentiment_score + 1) / 2  # Normalize -1 to 1 → 0 to 1
-
-            gap = sentiment_prob - current_prob
-            predicted_shift = gap * 100 * 0.7  # 70% of the gap
-
-            # Determine confidence
-            if mention_count > 20:
-                confidence = "high"
-            elif mention_count > 10:
-                confidence = "medium"
-            else:
-                confidence = "low"
-
-            reasoning = f"Sentiment: {sentiment_score:+.2f} ({int(positive_ratio*100)}% positive from {mention_count} posts). Market at {current_prob*100:.1f}%, sentiment suggests {sentiment_prob*100:.1f}%"
-
-            logger.info(f"✅ AI Analysis: shift={predicted_shift:+.2f}%, confidence={confidence}, posts={mention_count}")
-
-            # Free memory after analysis
-            import gc
-            del reddit_posts, metrics
-            gc.collect()
-        else:
-            # No Reddit data - use neutral prediction
-            predicted_shift = 0.0
-            confidence = "low"
-            reasoning = "No recent social media discussion found"
-            logger.warning(f"⚠️  No Reddit posts found for: {keywords}")
-
-    except Exception as e:
-        logger.error(f"Error in AI prediction: {e}")
-        predicted_shift = 0.0
-        confidence = "low"
-        reasoning = "Analysis unavailable"
-
+    # AI analysis disabled to reduce memory and costs
     prediction = {
         "market_id": market_id,
-        "predicted_shift": round(predicted_shift, 2),
-        "confidence_level": confidence,
-        "reasoning": reasoning,
+        "predicted_shift": 0.0,
+        "confidence_level": "low",
+        "reasoning": "AI sentiment analysis disabled (cost optimization mode)",
         "time_horizon": "6h",
         "created_at": datetime.utcnow().isoformat()
     }
@@ -385,77 +335,56 @@ async def get_market_details(market_id: str):
 
 @app.post("/api/analyze-topic")
 async def analyze_topic(topic: str, hours_back: int = 24):
-    """Analyze REAL sentiment from Reddit for a topic."""
-    if not reddit_client:
-        raise HTTPException(status_code=503, detail="Reddit client not available")
-
-    try:
-        logger.info(f"🔍 Analyzing REAL data for topic: {topic}")
-
-        # Fetch REAL Reddit data - Reduced limit to save memory
-        reddit_posts = reddit_client.search_posts(
-            query=topic,
-            subreddit="all",
-            time_filter="day",
-            limit=10  # Reduced from 50 to save memory
-        )
-
-        if not reddit_posts:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No Reddit posts found for topic: {topic}"
-            )
-
-        logger.info(f"📊 Found {len(reddit_posts)} real Reddit posts")
-
-        # Analyze sentiment with REAL AI
-        sentiment_metrics = calculate_sentiment_metrics(reddit_posts)
-
-        # Match to markets (simple keyword matching)
-        matched_markets = []
-        markets = markets_cache.get("data", [])
-
-        for market in markets:
-            title_lower = market.get("title", "").lower()
-            topic_words = topic.lower().split()
-
-            if any(word in title_lower for word in topic_words):
-                matched_markets.append({
-                    "market": market,
-                    "similarity": 0.75  # Simplified
-                })
-
-        posts_count = len(reddit_posts)
-
-        # Free memory after analysis
-        import gc
-        del reddit_posts
-        gc.collect()
-
-        return {
-            "topic": topic,
-            "sentiment": sentiment_metrics,
-            "matched_markets": matched_markets[:5],
-            "posts_analyzed": posts_count,
-            "mode": "REAL_DATA",
-            "sources": ["Reddit Public API", "Hugging Face AI"]
-        }
-
-    except Exception as e:
-        logger.error(f"Error analyzing topic: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    """Analyze sentiment (disabled for cost optimization)."""
+    return {
+        "topic": topic,
+        "sentiment": {
+            "sentiment_score": 0.0,
+            "mention_count": 0,
+            "engagement_score": 0.0
+        },
+        "matched_markets": [],
+        "posts_analyzed": 0,
+        "mode": "DISABLED",
+        "message": "AI sentiment analysis disabled for cost optimization"
+    }
 
 
 @app.post("/api/refresh-markets")
 async def refresh_markets():
-    """Refresh markets from Polymarket."""
+    """Refresh markets from Polymarket and Kalshi."""
     markets = await fetch_fresh_markets()
 
     return {
         "status": "success",
         "total_markets": len(markets),
         "mode": "REAL_DATA",
-        "source": "Polymarket Public API"
+        "source": "Polymarket + Kalshi Public APIs"
+    }
+
+
+@app.post("/api/clear-cache")
+async def clear_cache():
+    """Clear all cached data to free memory."""
+    global markets_cache
+    import gc
+
+    old_size = len(markets_cache.get("polymarket", [])) + len(markets_cache.get("kalshi", []))
+
+    markets_cache["polymarket"] = []
+    markets_cache["kalshi"] = []
+    markets_cache["timestamp"] = None
+
+    # Force aggressive garbage collection
+    gc.collect()
+    gc.collect()
+
+    logger.info(f"🧹 Cache cleared: {old_size} markets removed")
+
+    return {
+        "status": "success",
+        "message": f"Cleared {old_size} markets from cache",
+        "memory_freed": True
     }
 
 
