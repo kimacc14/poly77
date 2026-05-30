@@ -237,7 +237,7 @@ async def refresh_markets(db: Session = Depends(get_db)):
                     current_probability=market_data.get('current_probability', 0.5),
                     volume=market_data.get('volume', 0),
                     close_time=market_data.get('close_time'),
-                    metadata=market_data.get('metadata', {})
+                    metadata_json=market_data.get('metadata', {})
                 )
 
                 # Check if exists
@@ -268,7 +268,7 @@ async def refresh_markets(db: Session = Depends(get_db)):
                     current_probability=market_data.get('current_probability', 0.5),
                     volume=market_data.get('volume', 0),
                     close_time=market_data.get('close_time'),
-                    metadata=market_data.get('metadata', {})
+                    metadata_json=market_data.get('metadata', {})
                 )
 
                 existing = db.query(Market).filter(
@@ -330,7 +330,7 @@ async def analyze_topic(
                 sentiment_score=sentiment_metrics['sentiment_score'],
                 mention_count=sentiment_metrics['mention_count'],
                 engagement_score=sentiment_metrics['engagement_score'],
-                metadata=sentiment_metrics
+                metadata_json=sentiment_metrics
             )
             db.add(sentiment_record)
             db.commit()

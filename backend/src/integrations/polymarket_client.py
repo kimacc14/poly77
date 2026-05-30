@@ -9,6 +9,20 @@ import time
 
 logger = logging.getLogger(__name__)
 
+POLYMARKET_API_ENDPOINTS = {
+    "gamma": "https://gamma-api.polymarket.com",
+    "data": "https://data-api.polymarket.com",
+    "clob": "https://clob.polymarket.com",
+}
+POLYMARKET_COLLATERAL_CURRENCY = "pUSD"
+REAL_TRADING_ENABLED = False
+POLYMARKET_TRADING_CONFIG = {
+    "enabled": REAL_TRADING_ENABLED,
+    "mode": "disabled-read-only-viewer",
+    "collateral_currency": POLYMARKET_COLLATERAL_CURRENCY,
+    "clob_endpoint": POLYMARKET_API_ENDPOINTS["clob"],
+}
+
 
 def retry_with_backoff(max_retries=3, backoff_factor=2):
     """Retry decorator with exponential backoff."""
@@ -34,7 +48,10 @@ class PolymarketClient:
     def __init__(self):
         """Initialize Polymarket client."""
         # Use public Gamma API (no auth required)
-        self.gamma_url = "https://gamma-api.polymarket.com"
+        self.gamma_url = POLYMARKET_API_ENDPOINTS["gamma"]
+        self.data_url = POLYMARKET_API_ENDPOINTS["data"]
+        self.clob_url = POLYMARKET_API_ENDPOINTS["clob"]
+        self.trading_config = POLYMARKET_TRADING_CONFIG.copy()
         self.session = requests.Session()
         self.session.headers.update({
             "Content-Type": "application/json"
@@ -135,6 +152,7 @@ class PolymarketClient:
                     'category': category,
                     'current_probability': probability,
                     'volume': volume,
+                    'collateral_currency': POLYMARKET_COLLATERAL_CURRENCY,
                     'close_time': self._parse_datetime(event.get('endDate')),
                     'metadata': {
                         'outcomes': json.loads(first_market.get('outcomes', '[]')) if isinstance(first_market.get('outcomes'), str) else first_market.get('outcomes', []),
@@ -210,6 +228,7 @@ class PolymarketClient:
                 'category': market.get('category', ''),
                 'current_probability': probability,
                 'volume': float(market.get('volume', 0)),
+                'collateral_currency': POLYMARKET_COLLATERAL_CURRENCY,
                 'close_time': self._parse_datetime(market.get('endDate')),
                 'metadata': {
                     'outcomes': market.get('outcomes', []),

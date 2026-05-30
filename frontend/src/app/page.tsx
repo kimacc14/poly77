@@ -5,20 +5,9 @@ import axios from 'axios';
 import MarketCard from '@/components/MarketCard';
 import SentimentChart from '@/components/SentimentChart';
 import AlertPanel from '@/components/AlertPanel';
+import type { Market } from '@/types/market';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-interface Market {
-  id: number;
-  platform: string;
-  market_id: string;
-  title: string;
-  description: string;
-  category: string;
-  current_probability: number;
-  volume: number;
-  close_time: string;
-}
 
 interface Alert {
   id: number;
@@ -96,7 +85,7 @@ export default function Home() {
             AI-Powered Mindshare Market Analyzer
           </h1>
           <p className="mt-2 text-gray-600">
-            Real-time sentiment analysis and prediction market insights
+            Real-time sentiment analysis and read-only prediction market insights
           </p>
         </div>
       </header>

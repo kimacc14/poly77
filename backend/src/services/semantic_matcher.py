@@ -1,9 +1,24 @@
 """Semantic matching service to connect social insights with prediction markets."""
+from __future__ import annotations
+
 import logging
 from typing import List, Dict, Tuple, Optional
-import numpy as np
-from sentence_transformers import SentenceTransformer, util
-import spacy
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
+try:
+    from sentence_transformers import SentenceTransformer, util
+except ImportError:
+    SentenceTransformer = None
+    util = None
+
+try:
+    import spacy
+except ImportError:
+    spacy = None
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +33,11 @@ class SemanticMatcher:
         Args:
             model_name: Sentence transformer model name
         """
+        if SentenceTransformer is None or util is None:
+            raise ImportError("sentence-transformers is required for semantic matching")
+        if spacy is None:
+            raise ImportError("spacy is required for semantic matching")
+
         try:
             logger.info(f"Loading sentence transformer: {model_name}")
             self.model = SentenceTransformer(model_name)
@@ -210,6 +230,10 @@ class SemanticMatcher:
         Returns:
             NumPy array of market embeddings
         """
+        if np is None:
+            logger.error("NumPy is required for batch market encoding")
+            return []
+
         try:
             market_texts = [
                 f"{m['title']} {m.get('description', '')}"

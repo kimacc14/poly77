@@ -42,7 +42,7 @@ class Market(Base):
     current_probability = Column(Float)
     volume = Column(Float)
     close_time = Column(DateTime)
-    metadata = Column(JSON)
+    metadata_json = Column("metadata", JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -62,7 +62,7 @@ class SentimentScore(Base):
     mention_count = Column(Integer)
     engagement_score = Column(Float)
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
-    metadata = Column(JSON)
+    metadata_json = Column("metadata", JSON)
 
     # Relationships
     sentiment_matches = relationship("SentimentMatch", back_populates="sentiment")
@@ -116,7 +116,7 @@ class BlockchainProof(Base):
     topic = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
     verified = Column(Boolean, default=False)
-    metadata = Column(JSON)
+    metadata_json = Column("metadata", JSON)
 
 
 class Alert(Base):

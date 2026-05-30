@@ -1,19 +1,9 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { POLYMARKET_COLLATERAL_CURRENCY } from '@/config/polymarket';
+import type { Market } from '@/types/market';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-interface Market {
-  id: number;
-  platform: string;
-  market_id: string;
-  title: string;
-  description: string;
-  category: string;
-  current_probability: number;
-  volume: number;
-  close_time: string;
-}
 
 interface Prediction {
   predicted_shift: number;
@@ -26,6 +16,9 @@ export default function MarketCard({ market }: { market: Market }) {
   const [expanded, setExpanded] = useState(false);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [loading, setLoading] = useState(false);
+  const collateralCurrency = market.collateral_currency || (
+    market.platform === 'polymarket' ? POLYMARKET_COLLATERAL_CURRENCY : undefined
+  );
 
   const loadPrediction = async () => {
     if (!expanded && !prediction) {
@@ -69,11 +62,18 @@ export default function MarketCard({ market }: { market: Market }) {
       {/* Header */}
       <div className="p-6">
         <div className="flex items-start justify-between mb-3">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium uppercase ${
-            market.platform === 'kalshi' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-          }`}>
-            {market.platform}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`px-3 py-1 rounded-full text-xs font-medium uppercase ${
+              market.platform === 'kalshi' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+            }`}>
+              {market.platform}
+            </span>
+            {collateralCurrency && (
+              <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                {collateralCurrency}
+              </span>
+            )}
+          </div>
           <span className="text-xs text-gray-500 capitalize">{market.category}</span>
         </div>
 
@@ -100,6 +100,7 @@ export default function MarketCard({ market }: { market: Market }) {
         {/* Volume */}
         <div className="text-sm text-gray-600 mb-4">
           Volume: ${market.volume.toLocaleString()}
+          {collateralCurrency ? ` ${collateralCurrency}` : ''}
         </div>
 
         {/* Buttons */}
@@ -116,7 +117,7 @@ export default function MarketCard({ market }: { market: Market }) {
             rel="noopener noreferrer"
             className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors text-center"
           >
-            Trade Now
+            View Market
           </a>
         </div>
       </div>
